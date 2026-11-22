@@ -1,0 +1,63 @@
+name: ci-cd
+
+# CI: every pull request and every push to develop or release/**.
+# CD: push to develop -> dev. Push to release/** -> itg. Branch flow: docs/BRANCHING_AND_RELEASE.md.
+
+on:
+  pull_request:
+    branches: [develop, "release/**"]
+  push:
+    branches: [develop, "release/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ui-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  ci:
+    name: CI (check JavaScript and config)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Syntax check
+        run: |
+          node --check src/app.js
+          node --check src/config.js
+      - name: Check markup (element IDs and sign-in library integrity)
+        run: bash scripts/check-markup.sh
+      - name: Render config with test values
+        env:
+          TENANT_ID: 00000000-0000-0000-0000-000000000000
+          UI_CLIENT_ID: 00000000-0000-0000-0000-000000000000
+          API_BASE_URL: https://example.invalid
+          API_SCOPE: api://pokedex-api/access_as_user
+        run: |
+          bash scripts/render-config.sh /tmp/config.js
+          node --check /tmp/config.js
+      - name: Validate staticwebapp.config.json
+        run: python3 -m json.tool staticwebapp.config.json > /dev/null
+
+  deploy-dev:
+    name: CD (dev)
+    needs: ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: dev
+    secrets: inherit
+
+  deploy-itg:
+    name: CD (itg)
+    needs: ci
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/')
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: itg
+    secrets: inherit
