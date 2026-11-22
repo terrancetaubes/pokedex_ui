@@ -15,8 +15,24 @@
             New chat
           </button>
         </div>
-        <nav class="sidebar-nav" aria-label="Recent chats">
-          <p class="section-label">Recent</p>
+        <section class="sidebar-section" aria-labelledby="projects-label">
+          <p id="projects-label" class="section-label">Projects</p>
+          <button id="new-project" class="btn-link" type="button">
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+            New project
+          </button>
+          <form id="project-form" class="project-form" hidden>
+            <input id="project-name" type="text" maxlength="60" placeholder="Project name" aria-label="Project name" autocomplete="off" required />
+            <div class="project-form-actions">
+              <button type="submit" class="btn-small">Create</button>
+              <button id="cancel-project" type="button" class="btn-small">Cancel</button>
+            </div>
+          </form>
+          <ul id="project-list" class="chat-list"></ul>
+        </section>
+
+        <nav class="sidebar-nav" aria-labelledby="history-label">
+          <p id="history-label" class="section-label">Recent</p>
           <ul id="chat-list" class="chat-list"></ul>
         </nav>
       </aside>

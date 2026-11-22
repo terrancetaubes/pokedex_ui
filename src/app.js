@@ -21,6 +21,12 @@
     toggleSidebar: $("toggle-sidebar"),
     newChat: $("new-chat"),
     chatList: $("chat-list"),
+    historyLabel: $("history-label"),
+    newProject: $("new-project"),
+    projectForm: $("project-form"),
+    projectName: $("project-name"),
+    cancelProject: $("cancel-project"),
+    projectList: $("project-list"),
     signIn: $("sign-in"),
     signInMain: $("sign-in-main"),
     signInPanel: $("signin-panel"),
@@ -45,11 +51,14 @@
     ready: false, // MSAL initialized
     msal: null,
     account: null,
-    chats: [], // newest first: { id, title, messages: [{ role, text, sources? }] }
+    chats: [], // newest first: { id, title, projectId, messages: [{ role, text, sources? }] }
+    projects: [], // newest first: { id, name }
+    projectId: null, // null = "All chats"
     activeId: null,
     busy: false,
     pendingChatId: null,
     nextId: 1,
+    nextProjectId: 1,
   };
 
   // ---------- helpers ----------
@@ -66,6 +75,16 @@
 
   function activeChat() {
     return state.chats.find((c) => c.id === state.activeId) || null;
+  }
+
+  function activeProject() {
+    return state.projects.find((p) => p.id === state.projectId) || null;
+  }
+
+  // The chats shown in the history list: all chats, or only the selected project's chats.
+  function visibleChats() {
+    const project = activeProject();
+    return project ? state.chats.filter((c) => c.projectId === project.id) : state.chats;
   }
 
   function firstName() {
@@ -107,13 +126,41 @@
 
   // ---------- rendering ----------
 
+  function renderProjects() {
+    els.projectList.replaceChildren();
+
+    const allLi = el("li");
+    const allBtn = el("button", "chat-item", "All chats");
+    allBtn.type = "button";
+    if (state.projectId === null) allBtn.setAttribute("aria-current", "true");
+    allBtn.addEventListener("click", () => selectProject(null));
+    allLi.appendChild(allBtn);
+    els.projectList.appendChild(allLi);
+
+    for (const project of state.projects) {
+      const li = el("li");
+      const btn = el("button", "chat-item", project.name);
+      btn.type = "button";
+      if (project.id === state.projectId) btn.setAttribute("aria-current", "true");
+      btn.addEventListener("click", () => selectProject(project.id));
+      li.appendChild(btn);
+      els.projectList.appendChild(li);
+    }
+  }
+
   function renderSidebar() {
+    const project = activeProject();
+    els.historyLabel.textContent = project ? project.name : "Recent";
     els.chatList.replaceChildren();
-    if (state.chats.length === 0) {
-      els.chatList.appendChild(el("li", "empty-note", state.account ? "No chats yet" : "Sign in to start a chat"));
+
+    const chats = visibleChats();
+    if (chats.length === 0) {
+      let text = state.account ? "No chats yet" : "Sign in to start a chat";
+      if (project && state.account) text = "No chats in this project yet";
+      els.chatList.appendChild(el("li", "empty-note", text));
       return;
     }
-    for (const chat of state.chats) {
+    for (const chat of chats) {
       const li = el("li");
       const btn = el("button", "chat-item", chat.title);
       btn.type = "button";
@@ -207,14 +254,45 @@
 
   function renderAll() {
     renderAccount();
+    renderProjects();
     renderSidebar();
     renderThread();
     updateComposer();
   }
 
+  // ---------- projects ----------
+
+  // Shows the inline name form. The project is created on submit.
+  function showProjectForm() {
+    els.projectForm.hidden = false;
+    els.projectName.value = "";
+    els.projectName.focus();
+  }
+
+  function hideProjectForm() {
+    els.projectForm.hidden = true;
+    els.projectName.value = "";
+  }
+
+  function createProject(name) {
+    const project = { id: state.nextProjectId++, name: name.slice(0, 60) };
+    state.projects.unshift(project);
+    hideProjectForm();
+    selectProject(project.id);
+  }
+
+  // null selects "All chats". Selecting a project closes the open chat, so the page shows its welcome view.
+  function selectProject(id) {
+    state.projectId = id;
+    state.activeId = null;
+    setStatus("");
+    renderAll();
+  }
+
   // ---------- chats ----------
 
   // Opens a blank chat. The current chat stays in the sidebar.
+  // A new chat joins the selected project, if one is selected.
   function newChat() {
     state.activeId = null;
     setStatus("");
@@ -233,7 +311,7 @@
 
     let chat = activeChat();
     if (!chat) {
-      chat = { id: state.nextId++, title: titleFrom(question), messages: [] };
+      chat = { id: state.nextId++, title: titleFrom(question), projectId: state.projectId, messages: [] };
       state.chats.unshift(chat);
       state.activeId = chat.id;
     }
@@ -317,9 +395,11 @@
 
   function signOut() {
     if (!isConfigured() || !state.msal) return;
-    // Drop the chats of the signed-out user from memory before the page leaves.
+    // Drop the chats and projects of the signed-out user from memory before the page leaves.
     state.account = null;
     state.chats = [];
+    state.projects = [];
+    state.projectId = null;
     state.activeId = null;
     state.busy = false;
     state.pendingChatId = null;
@@ -334,6 +414,16 @@
   els.signInMain.addEventListener("click", signIn);
   els.signOut.addEventListener("click", signOut);
   els.newChat.addEventListener("click", newChat);
+  els.newProject.addEventListener("click", showProjectForm);
+  els.cancelProject.addEventListener("click", hideProjectForm);
+  els.projectForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const name = els.projectName.value.trim();
+    if (name) createProject(name);
+  });
+  els.projectName.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") hideProjectForm();
+  });
 
   els.toggleSidebar.addEventListener("click", () => {
     const closed = els.app.classList.toggle("sidebar-closed");

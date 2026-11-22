@@ -114,9 +114,60 @@ button, textarea { font: inherit; color: inherit; }
 
 .sidebar-nav {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 0 0.5rem 1rem;
 }
+
+/* The projects group keeps its size. It scrolls when it grows past 40% of the sidebar. */
+.sidebar-section {
+  flex-shrink: 0;
+  max-height: 40%;
+  overflow-y: auto;
+  padding: 0 0.5rem;
+}
+
+.btn-link {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.btn-link:hover { background: var(--hover); color: var(--text); }
+
+.project-form { padding: 0.25rem 0.6rem 0.5rem; display: flex; flex-direction: column; gap: 0.4rem; }
+
+.project-form input {
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  background: var(--input-bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+.project-form-actions { display: flex; gap: 0.4rem; }
+
+.btn-small {
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.btn-small[type="submit"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.btn-small:hover { background: var(--hover); }
+.btn-small[type="submit"]:hover { background: var(--accent-hover); }
 
 .section-label {
   margin: 0.75rem 0.5rem 0.35rem;
